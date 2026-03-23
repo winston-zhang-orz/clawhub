@@ -20,6 +20,7 @@ todos.json
 .cta.json
 .vscode
 .env*.local
+.env.docker
 coverage
 playwright-report
 test-results

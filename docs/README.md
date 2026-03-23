@@ -19,6 +19,11 @@ Reading order (new contributor):
 8. `docs/deploy.md`: Convex + Vercel deployment + rewrites.
 9. `docs/troubleshooting.md`: common failure modes.
 
+Deployment docs:
+
+- `docs/deploy.md`: Convex + Vercel deployment + rewrites.
+- `docs/self-hosting.md`: **self-hosted / private deployment** with Docker Compose.
+
 Feature/ops docs (already present):
 
 - `docs/spec.md`: product + implementation spec (data model + flows).

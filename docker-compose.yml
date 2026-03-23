@@ -1,0 +1,77 @@
+# ClawHub — self-hosted Docker Compose stack
+#
+# Services:
+#   convex   — self-hosted Convex backend (DB + HTTP actions)
+#   app      — TanStack Start / Nitro frontend
+#   nginx    — reverse proxy (routes /api/* → convex, /* → app)
+#
+# Quick start:
+#   cp .env.docker.example .env.docker
+#   # fill in .env.docker (see docs/self-hosting.md)
+#   docker compose up -d
+
+services:
+  # ── Convex self-hosted backend ────────────────────────────────────────────
+  convex:
+    image: ghcr.io/get-convex/convex-backend:latest
+    restart: unless-stopped
+    environment:
+      # The URL that external clients (browser, CLI, nginx) use to reach Convex.
+      # Change to your domain when deploying behind a reverse proxy.
+      CONVEX_SELF_HOSTED_URL: "${CONVEX_SELF_HOSTED_URL:-http://localhost:3210}"
+      # Optional: pin the admin key so it does not rotate on restart.
+      # Generate one with: openssl rand -hex 32
+      CONVEX_SELF_HOSTED_ADMIN_KEY: "${CONVEX_SELF_HOSTED_ADMIN_KEY:-}"
+    ports:
+      - "3210:3210"
+    volumes:
+      - convex_data:/convex_data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3210/version"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  # ── Frontend (TanStack Start / Nitro) ─────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # These are embedded into the client bundle at build time.
+        VITE_CONVEX_URL: "${VITE_CONVEX_URL}"
+        VITE_CONVEX_SITE_URL: "${VITE_CONVEX_SITE_URL}"
+        VITE_SOULHUB_SITE_URL: "${VITE_SOULHUB_SITE_URL:-}"
+        VITE_SOULHUB_HOST: "${VITE_SOULHUB_HOST:-}"
+        VITE_SITE_MODE: "${VITE_SITE_MODE:-}"
+        VITE_APP_BUILD_SHA: "${VITE_APP_BUILD_SHA:-}"
+    restart: unless-stopped
+    env_file: .env.docker
+    environment:
+      PORT: "3000"
+      NODE_ENV: production
+    depends_on:
+      convex:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── nginx reverse proxy ───────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app
+      - convex
+
+volumes:
+  convex_data:
