@@ -57,6 +57,45 @@ export async function handleDeletedUserSignIn(
   throw new ConvexError(DELETED_ACCOUNT_REAUTH_MESSAGE);
 }
 
+// GitLab OAuth provider configuration for self-hosted instances.
+//
+// GitLab uses standard OAuth2 with its own API endpoints. We build the config
+// manually so we can point it at any self-hosted GitLab instance via
+// AUTH_GITLAB_URL (defaults to https://gitlab.enflame.cn for this deployment).
+type GitLabProfile = {
+  id: number;
+  username: string;
+  name: string | null;
+  email: string | null;
+  avatar_url: string | null;
+};
+
+function createGitLabProvider(opts: { clientId: string; clientSecret: string; issuer: string }) {
+  const base = opts.issuer.replace(/\/$/, "");
+  return {
+    id: "gitlab" as const,
+    name: "GitLab",
+    type: "oauth" as const,
+    authorization: {
+      url: `${base}/oauth/authorize`,
+      params: { scope: "read_user" },
+    },
+    token: `${base}/oauth/token`,
+    userinfo: `${base}/api/v4/user`,
+    clientId: opts.clientId,
+    clientSecret: opts.clientSecret,
+    checks: ["pkce", "state"] as ("pkce" | "state")[],
+    profile(profile: GitLabProfile) {
+      return {
+        id: String(profile.id),
+        name: profile.username ?? profile.name ?? "user",
+        email: profile.email ?? undefined,
+        image: profile.avatar_url ?? undefined,
+      };
+    },
+  };
+}
+
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [
     GitHub({
@@ -71,6 +110,16 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         };
       },
     }),
+    // Only register the GitLab provider when both credentials are configured.
+    ...(process.env.AUTH_GITLAB_ID && process.env.AUTH_GITLAB_SECRET
+      ? [
+          createGitLabProvider({
+            clientId: process.env.AUTH_GITLAB_ID,
+            clientSecret: process.env.AUTH_GITLAB_SECRET,
+            issuer: process.env.AUTH_GITLAB_URL ?? "https://gitlab.enflame.cn",
+          }),
+        ]
+      : []),
   ],
   callbacks: {
     /**
@@ -87,13 +136,21 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       const user = await ctx.db.get(args.userId);
       await handleDeletedUserSignIn(ctx, args, user);
 
-      // Schedule GitHub profile sync to handle username renames (fixes #303)
-      // This runs as a background action so it doesn't block sign-in
+      // Only schedule GitHub profile sync for GitHub-authenticated users.
+      // GitLab (and other non-GitHub) users don't have a GitHub account to sync.
       const now = Date.now();
       if (shouldScheduleGitHubProfileSync(user, now)) {
-        await ctx.scheduler.runAfter(0, internal.users.syncGitHubProfileAction, {
-          userId: args.userId,
-        });
+        const githubAccount = await ctx.db
+          .query("authAccounts")
+          .withIndex("userIdAndProvider", (q) =>
+            q.eq("userId", args.userId).eq("provider", "github"),
+          )
+          .unique();
+        if (githubAccount) {
+          await ctx.scheduler.runAfter(0, internal.users.syncGitHubProfileAction, {
+            userId: args.userId,
+          });
+        }
       }
     },
   },

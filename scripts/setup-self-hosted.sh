@@ -113,6 +113,13 @@ convex_env_set AUTH_GITHUB_ID     "${AUTH_GITHUB_ID:-}"
 convex_env_set AUTH_GITHUB_SECRET "${AUTH_GITHUB_SECRET:-}"
 convex_env_set TRUST_FORWARDED_IPS "${TRUST_FORWARDED_IPS:-true}"
 
+# GitLab OAuth (optional) — only set when both credentials are present
+if [[ -n "${AUTH_GITLAB_ID:-}" && -n "${AUTH_GITLAB_SECRET:-}" ]]; then
+  convex_env_set AUTH_GITLAB_ID     "${AUTH_GITLAB_ID}"
+  convex_env_set AUTH_GITLAB_SECRET "${AUTH_GITLAB_SECRET}"
+  [[ -n "${AUTH_GITLAB_URL:-}" ]] && convex_env_set AUTH_GITLAB_URL "${AUTH_GITLAB_URL}"
+fi
+
 [[ -n "${OPENAI_API_KEY:-}"   ]] && convex_env_set OPENAI_API_KEY    "${OPENAI_API_KEY}"
 [[ -n "${VT_API_KEY:-}"       ]] && convex_env_set VT_API_KEY        "${VT_API_KEY}"
 [[ -n "${DISCORD_WEBHOOK_URL:-}" ]] && convex_env_set DISCORD_WEBHOOK_URL "${DISCORD_WEBHOOK_URL}"

@@ -21,7 +21,6 @@ Reading order (new contributor):
 
 Deployment docs:
 
-- `docs/deploy.md`: Convex + Vercel deployment + rewrites.
 - `docs/self-hosting.md`: **self-hosted / private deployment** with Docker Compose.
 
 Feature/ops docs (already present):

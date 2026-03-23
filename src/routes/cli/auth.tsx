@@ -4,7 +4,7 @@ import { useMutation } from "convex/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { getUserFacingConvexError } from "../../lib/convexError";
-import { getClawHubSiteUrl, normalizeClawHubSiteOrigin } from "../../lib/site";
+import { getClawHubSiteUrl, getGitLabUrl, normalizeClawHubSiteOrigin } from "../../lib/site";
 import { setAuthError, useAuthError } from "../../lib/useAuthError";
 import { useAuthStatus } from "../../lib/useAuthStatus";
 
@@ -17,6 +17,7 @@ function CliAuth() {
   const { signIn } = useAuthActions();
   const { error: authError, clear: clearAuthError } = useAuthError();
   const createToken = useMutation(api.tokens.create);
+  const gitLabUrl = getGitLabUrl();
 
   const search = Route.useSearch() as {
     redirect_uri?: string;
@@ -143,6 +144,27 @@ function CliAuth() {
           >
             Sign in with GitHub
           </button>
+          {gitLabUrl ? (
+            <button
+              className="btn btn-secondary"
+              type="button"
+              disabled={isLoading}
+              style={{ marginTop: 8 }}
+              onClick={() => {
+                clearAuthError();
+                void signIn(
+                  "gitlab",
+                  signInRedirectTo ? { redirectTo: signInRedirectTo } : undefined,
+                ).catch((error) => {
+                  setAuthError(
+                    getUserFacingConvexError(error, "Sign in failed. Please try again."),
+                  );
+                });
+              }}
+            >
+              Sign in with GitLab
+            </button>
+          ) : null}
         </div>
       </main>
     );

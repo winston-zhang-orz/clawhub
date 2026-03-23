@@ -98,3 +98,12 @@ export function getSiteDescription(mode: SiteMode = getSiteMode()) {
 export function getSiteUrlForMode(mode: SiteMode = getSiteMode()) {
   return mode === "souls" ? getOnlyCrabsSiteUrl() : getClawHubSiteUrl();
 }
+
+/**
+ * Returns the self-hosted GitLab instance URL when the `VITE_GITLAB_URL`
+ * environment variable is set, otherwise `null`.
+ * Used to conditionally show the "Sign in with GitLab" button.
+ */
+export function getGitLabUrl(): string | null {
+  return getRuntimeEnv("VITE_GITLAB_URL") ?? null;
+}

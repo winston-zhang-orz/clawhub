@@ -19,8 +19,8 @@ import { scheduleNextBatchIfNeeded } from "./lib/batching";
 import { generateChangelogPreview as buildChangelogPreview } from "./lib/changelog";
 import { embeddingVisibilityFor } from "./lib/embeddingVisibility";
 import {
-  canHealSkillOwnershipByGitHubProviderAccountId,
-  getGitHubProviderAccountId,
+  canHealSkillOwnershipByProviderAccountId,
+  getAnyOAuthProviderAccountId,
 } from "./lib/githubIdentity";
 import {
   adjustGlobalPublicSkillsCount,
@@ -1515,20 +1515,18 @@ export const checkSlugAvailability = query({
     const url = buildConflictingSkillUrl(skill, owner);
     const slugTakenMessage = buildSlugTakenErrorMessage(skill, owner);
 
-    // Check GitHub identity FIRST so healing works even when the previous
-    // owner record is deleted/deactivated (e.g. duplicate Convex Auth user
-    // where the old record was later banned).
+    // Check OAuth provider identity FIRST so healing works even when the
+    // previous owner record is deleted/deactivated (e.g. duplicate Convex Auth
+    // user where the old record was later banned). Supports both GitHub and
+    // GitLab provider accounts — cross-provider matches are never allowed.
     if (userId) {
-      const [ownerProviderAccountId, callerProviderAccountId] = await Promise.all([
-        getGitHubProviderAccountId(ctx, skill.ownerUserId),
-        getGitHubProviderAccountId(ctx, userId),
+      const [ownerProviderAccount, callerProviderAccount] = await Promise.all([
+        getAnyOAuthProviderAccountId(ctx, skill.ownerUserId),
+        getAnyOAuthProviderAccountId(ctx, userId),
       ]);
 
       if (
-        canHealSkillOwnershipByGitHubProviderAccountId(
-          ownerProviderAccountId,
-          callerProviderAccountId,
-        )
+        canHealSkillOwnershipByProviderAccountId(ownerProviderAccount, callerProviderAccount)
       ) {
         return {
           available: true,
@@ -5611,19 +5609,17 @@ export const insertVersion = internalMutation({
       const owner = await ctx.db.get(skill.ownerUserId);
       const slugTakenMessage = buildSlugTakenErrorMessage(skill, owner);
 
-      // Check GitHub identity FIRST so ownership healing works even when the
-      // previous owner record is deleted/deactivated (e.g. duplicate Convex Auth
-      // user where the old record was later banned).
-      const [ownerProviderAccountId, callerProviderAccountId] = await Promise.all([
-        getGitHubProviderAccountId(ctx, skill.ownerUserId),
-        getGitHubProviderAccountId(ctx, userId),
+      // Check OAuth provider identity FIRST so ownership healing works even when
+      // the previous owner record is deleted/deactivated (e.g. duplicate Convex
+      // Auth user where the old record was later banned). Supports both GitHub
+      // and GitLab provider accounts — cross-provider matches are never allowed.
+      const [ownerProviderAccount, callerProviderAccount] = await Promise.all([
+        getAnyOAuthProviderAccountId(ctx, skill.ownerUserId),
+        getAnyOAuthProviderAccountId(ctx, userId),
       ]);
 
       if (
-        canHealSkillOwnershipByGitHubProviderAccountId(
-          ownerProviderAccountId,
-          callerProviderAccountId,
-        )
+        canHealSkillOwnershipByProviderAccountId(ownerProviderAccount, callerProviderAccount)
       ) {
         await ctx.db.patch(skill._id, { ownerUserId: userId, updatedAt: now });
         skill = { ...skill, ownerUserId: userId };

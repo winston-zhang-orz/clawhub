@@ -46,6 +46,7 @@ services:
         VITE_SOULHUB_HOST: "${VITE_SOULHUB_HOST:-}"
         VITE_SITE_MODE: "${VITE_SITE_MODE:-}"
         VITE_APP_BUILD_SHA: "${VITE_APP_BUILD_SHA:-}"
+        VITE_GITLAB_URL: "${VITE_GITLAB_URL:-}"
     restart: unless-stopped
     env_file: .env.docker
     environment:

@@ -5,7 +5,7 @@ import { useMemo, useRef } from "react";
 import { getUserFacingConvexError } from "../lib/convexError";
 import { gravatarUrl } from "../lib/gravatar";
 import { isModerator } from "../lib/roles";
-import { getClawHubSiteUrl, getSiteMode, getSiteName } from "../lib/site";
+import { getClawHubSiteUrl, getGitLabUrl, getSiteMode, getSiteName } from "../lib/site";
 import { applyTheme, useThemeMode } from "../lib/theme";
 import { startThemeTransition } from "../lib/theme-transition";
 import { setAuthError, useAuthError } from "../lib/useAuthError";
@@ -28,6 +28,7 @@ export default function Header() {
   const siteName = useMemo(() => getSiteName(siteMode), [siteMode]);
   const isSoulMode = siteMode === "souls";
   const clawHubUrl = getClawHubSiteUrl();
+  const gitLabUrl = getGitLabUrl();
 
   const avatar = me?.image ?? (me?.email ? gravatarUrl(me.email) : undefined);
   const handle = me?.handle ?? me?.displayName ?? "user";
@@ -331,6 +332,27 @@ export default function Header() {
                 <span className="sign-in-label">Sign in</span>
                 <span className="sign-in-provider">with GitHub</span>
               </button>
+              {gitLabUrl ? (
+                <button
+                  className="btn btn-secondary"
+                  type="button"
+                  disabled={isLoading}
+                  onClick={() => {
+                    clearAuthError();
+                    void signIn(
+                      "gitlab",
+                      signInRedirectTo ? { redirectTo: signInRedirectTo } : undefined,
+                    ).catch((error) => {
+                      setAuthError(
+                        getUserFacingConvexError(error, "Sign in failed. Please try again."),
+                      );
+                    });
+                  }}
+                >
+                  <span className="sign-in-label">Sign in</span>
+                  <span className="sign-in-provider">with GitLab</span>
+                </button>
+              ) : null}
             </>
           )}
         </div>

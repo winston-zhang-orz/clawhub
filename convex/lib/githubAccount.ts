@@ -35,6 +35,15 @@ export async function requireGitHubAccountAge(ctx: GitHubAccountGateCtx, userId:
   const user = await ctx.runQuery(internal.users.getByIdInternal, { userId });
   if (!user || user.deletedAt || user.deactivatedAt) throw new ConvexError("User not found");
 
+  // GitLab users (internal corporate accounts on self-hosted GitLab) bypass the
+  // GitHub account-age gate: they are authenticated via an internal identity
+  // provider and do not have a public GitHub account to check against.
+  const gitlabAccountId = await ctx.runQuery(
+    internal.githubIdentity.getGitLabProviderAccountIdInternal,
+    { userId },
+  );
+  if (gitlabAccountId) return;
+
   const now = Date.now();
   let createdAt = user.githubCreatedAt ?? null;
 

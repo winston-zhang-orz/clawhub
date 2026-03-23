@@ -84,6 +84,35 @@ Open `.env.docker` and fill in the values. Mandatory items are marked below.
    AUTH_GITHUB_SECRET=<client-secret>
    ```
 
+### Step 2b — (Optional) Create a GitLab OAuth App
+
+If you want to let users sign in with your internal GitLab instance (e.g. `gitlab.enflame.cn`),
+create an OAuth application there too.
+
+1. In GitLab go to **User menu → Preferences → Applications** (or
+   `https://<your-gitlab-instance>/-/profile/applications`).
+2. Fill in the form:
+
+   | Field | Value |
+   |-------|-------|
+   | Name | ClawHub |
+   | Redirect URI | `http://localhost:3210/api/auth/callback/gitlab` |
+   | Scopes | ✅ `read_user` |
+
+3. Click **Save application** and copy the **Application ID** and **Secret**.
+4. In `.env.docker`:
+
+   ```bash
+   AUTH_GITLAB_ID=<application-id>
+   AUTH_GITLAB_SECRET=<secret>
+   AUTH_GITLAB_URL=https://gitlab.enflame.cn   # URL of your GitLab instance
+   VITE_GITLAB_URL=https://gitlab.enflame.cn   # same value — tells the UI to show the button
+   ```
+
+   > **Note:** `VITE_GITLAB_URL` is embedded into the browser bundle at build time. If you change
+   > it after the initial build, rebuild the `app` container:
+   > `docker compose up app --build -d`
+
 ### Step 3 — Generate a Convex admin key
 
 ```bash
@@ -127,6 +156,11 @@ bunx convex env set CONVEX_SITE_URL  "${CONVEX_SITE_URL}"   --url "$URL" --admin
 bunx convex env set AUTH_GITHUB_ID   "${AUTH_GITHUB_ID}"    --url "$URL" --admin-key "$KEY"
 bunx convex env set AUTH_GITHUB_SECRET "${AUTH_GITHUB_SECRET}" --url "$URL" --admin-key "$KEY"
 bunx convex env set TRUST_FORWARDED_IPS "true"              --url "$URL" --admin-key "$KEY"
+
+# GitLab OAuth (optional — only set when AUTH_GITLAB_ID is configured)
+[[ -n "${AUTH_GITLAB_ID}" ]] && bunx convex env set AUTH_GITLAB_ID     "${AUTH_GITLAB_ID}"     --url "$URL" --admin-key "$KEY"
+[[ -n "${AUTH_GITLAB_SECRET}" ]] && bunx convex env set AUTH_GITLAB_SECRET "${AUTH_GITLAB_SECRET}" --url "$URL" --admin-key "$KEY"
+[[ -n "${AUTH_GITLAB_URL}" ]] && bunx convex env set AUTH_GITLAB_URL   "${AUTH_GITLAB_URL}"   --url "$URL" --admin-key "$KEY"
 
 # Optional — features degrade gracefully without these
 bunx convex env set OPENAI_API_KEY   "${OPENAI_API_KEY}"    --url "$URL" --admin-key "$KEY"
@@ -240,6 +274,10 @@ All variables are documented in `.env.docker.example`.
 | `AUTH_GITHUB_SECRET` | ✅ | — | GitHub OAuth App client secret |
 | `JWT_PRIVATE_KEY` | ✅ | — | JWT signing key (from `bunx @convex-dev/auth`) |
 | `JWKS` | ✅ | — | JWKS public key set (from `bunx @convex-dev/auth`) |
+| `AUTH_GITLAB_ID` | optional | — | GitLab OAuth Application ID — enables GitLab sign-in |
+| `AUTH_GITLAB_SECRET` | optional | — | GitLab OAuth Application secret |
+| `AUTH_GITLAB_URL` | optional | `https://gitlab.enflame.cn` | Self-hosted GitLab instance URL |
+| `VITE_GITLAB_URL` | optional | — | Same as `AUTH_GITLAB_URL`; shows "Sign in with GitLab" button when set |
 | `OPENAI_API_KEY` | optional | — | Enables vector search + LLM moderation |
 | `VT_API_KEY` | optional | — | Enables VirusTotal malware scanning |
 | `DISCORD_WEBHOOK_URL` | optional | — | Enables Discord skill notifications |
